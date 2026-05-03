@@ -123,6 +123,12 @@ document.addEventListener("DOMContentLoaded", function () {
         distanceKm = 10;
       }
 
+      const tripType = document.getElementById("tripType").value;
+
+      if (tripType === "roundtrip") {
+        distanceKm = distanceKm * 2;
+      }
+
       const baseLiters = distanceKm / kmPerLiter;
       const totalLiters = baseLiters + allowanceLiters;
       const totalCost = totalLiters * fuelPrice;
@@ -137,6 +143,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       detailsList.innerHTML = `
         <li>Route: ${escapeHTML(origin)} to ${escapeHTML(destination)}</li>
+        <li>Trip type: ${tripType === "roundtrip" ? "Round Trip" : "One Way"}</li>
         <li>Vehicle type: ${escapeHTML(vehicleName)}</li>
         <li>Fuel type: ${escapeHTML(fuelName)}</li>
         <li>Fuel efficiency used: ${kmPerLiter.toFixed(1)} km/L</li>
