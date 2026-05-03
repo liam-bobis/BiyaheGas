@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BiyaheGas PH</title>
+
+  <link rel="icon" href="Photos/favicon.png" sizes="any">
+  <link rel="apple-touch-icon" href="Photos/BG-Logo.png">
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+
+    <a href="/" class="logo">
+      <img src="Photos/BG-Icon-Transparent-Logo.svg" alt="BiyaheGas PH logo" class="logo-img">
+      <span class="logo-text">BiyaheGas PH</span>
+    </a>
+
+    <nav>
+      <a href="#calculator">Calculator</a>
+      <a href="#about">About</a>
+      <a href="#contact">Contact</a>
+    </nav>
+
+  </div>
+</header>
+
+<section class="hero wrap">
+  <div class="hero-grid">
+
+    <div class="hero-card">
+      <p class="tag">PHILIPPINE TRIP FUEL ESTIMATOR</p>
+      <h1>Plan your fuel budget before you travel.</h1>
+      <p class="hero-text">
+        Estimate your fuel cost using real road distance, average fuel prices, and your vehicle’s km/L.
+      </p>
+    </div>
+
+    <div class="fuel-board">
+      <h3>Average Fuel Prices</h3>
+
+      <div class="price-row">
+        <span>Unleaded / Regular 91</span>
+        <strong id="boardUnleaded">—</strong>
+      </div>
+
+      <div class="price-row">
+        <span>Premium Gasoline 95</span>
+        <strong id="boardPremium">—</strong>
+      </div>
+
+      <div class="price-row">
+        <span>Diesel</span>
+        <strong id="boardDiesel">—</strong>
+      </div>
+
+      <div class="price-row">
+        <span>Premium Diesel</span>
+        <strong id="boardPremiumDiesel">—</strong>
+      </div>
+
+      <div class="price-row display-only">
+        <span>Kerosene</span>
+        <strong id="boardKerosene">—</strong>
+      </div>
+
+      <p id="boardUpdatedAt" class="board-note">
+        Loading fuel prices...
+      </p>
+    </div>
+
+  </div>
+</section>
+
+<section id="calculator" class="wrap main-grid">
+
+  <div class="card">
+    <h2>Trip Calculator</h2>
+
+    <form id="tripForm">
+
+      <div class="field full">
+        <label for="origin">Starting Point</label>
+        <input id="origin" required placeholder="Naga City, Camarines Sur">
+        <small>Example: Naga City, Camarines Sur</small>
+      </div>
+
+      <div class="field full">
+        <label for="destination">Destination</label>
+        <input id="destination" required placeholder="Quezon City, Metro Manila">
+        <small>Example: Quezon City, Metro Manila</small>
+      </div>
+
+      <div class="field">
+        <label for="vehicleType">Vehicle Type</label>
+        <select id="vehicleType" required>
+          <option value="">Select vehicle</option>
+          <option value="motorcycle">Motorcycle</option>
+          <option value="tricycle">Tricycle</option>
+          <option value="micro">Micro Car</option>
+          <option value="hatchback">Hatchback</option>
+          <option value="sedan">Sedan</option>
+          <option value="wagon">Wagon</option>
+          <option value="coupe">Coupe</option>
+          <option value="crossover">Crossover</option>
+          <option value="mpv">MPV</option>
+          <option value="suv">SUV</option>
+          <option value="pickup">Pick-Up</option>
+          <option value="offroader">Off-Roader</option>
+          <option value="van">Van</option>
+          <option value="minibus">Mini Bus</option>
+          <option value="bus">Bus</option>
+          <option value="lighttruck">Light Truck</option>
+          <option value="truck">Truck</option>
+          <option value="heavytruck">Heavy Truck</option>
+        </select>
+        <small>Auto-fills average fuel efficiency.</small>
+      </div>
+
+      <div class="field">
+        <label for="fuelType">Fuel Type</label>
+        <select id="fuelType" required>
+          <option value="">Select fuel</option>
+          <option value="unleaded">Unleaded / Regular 91</option>
+          <option value="premium">Premium Gasoline 95</option>
+          <option value="diesel">Diesel</option>
+          <option value="premium_diesel">Premium Diesel</option>
+        </select>
+        <small>Kerosene is display-only and is not used for normal trip estimates.</small>
+      </div>
+
+      <div class="input-row">
+        <div class="field">
+          <label for="kmPerLiter">Fuel Efficiency</label>
+          <input id="kmPerLiter" type="number" min="1" step="0.1" placeholder="km/L" required>
+          <small>Example: 12 km/L</small>
+        </div>
+
+        <div class="field">
+          <label for="allowanceLiters">Allowance</label>
+          <input id="allowanceLiters" type="number" min="0" step="0.1" value="2" required>
+          <small>Extra liters for traffic, detours, or idling.</small>
+        </div>
+      </div>
+
+      <div class="field full price-field">
+        <div class="label-row">
+          <label for="fuelPrice">Fuel Price ₱/L</label>
+          <button id="resetAutoPriceBtn" type="button" class="small-btn">Use auto price</button>
+        </div>
+
+        <input id="fuelPrice" type="number" min="1" step="0.01" required>
+        <small>
+          Auto-filled from the average price in your Google Sheet. You may manually edit this value anytime.
+        </small>
+      </div>
+
+      <button type="submit">Estimate</button>
+
+    </form>
+
+    <div id="errorBox" class="error-box hidden"></div>
+  </div>
+
+  <div class="card results">
+    <h2>Results</h2>
+
+    <div class="result-box main">
+      <span>Total cost</span>
+      <strong id="costValue">—</strong>
+    </div>
+
+    <div class="result-box">
+      <span>Liters needed</span>
+      <strong id="litersValue">—</strong>
+    </div>
+
+    <div class="result-box">
+      <span>Distance</span>
+      <strong id="distanceValue">—</strong>
+    </div>
+
+    <div class="result-box">
+      <span>Cost per liter</span>
+      <strong id="priceValue">—</strong>
+    </div>
+
+    <ul id="detailsList" class="details-list">
+      <li>Fill out the form to calculate.</li>
+    </ul>
+  </div>
+
+</section>
+
+<section class="wrap disclaimer-box">
+  <h3>Estimate Disclaimer</h3>
+  <p>
+    Results are estimates only. Actual fuel consumption may vary due to vehicle model,
+    traffic, idle time, driving style, road conditions, passengers, cargo weight, and fuel station pricing.
+  </p>
+</section>
+
+<section id="about" class="wrap card info-card">
+  <h2>About</h2>
+  <p>
+    BiyaheGas PH is your partner in making your travels & roadtrips easier to plan. We help you estimate your fuel expenses for your trips.
+  </p>
+</section>
+
+<section id="contact" class="wrap card info-card">
+  <h2>Contact</h2>
+  <p>Email: geoffreyliam23@gmail.com</p>
+</section>
+
+<script src="script.js"></script>
+
+</body>
+</html>
