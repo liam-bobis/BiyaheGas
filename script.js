@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
   const OPENROUTE_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjNhMDYwMTM2OWY1YTQ3YWI5MTBhOGI3ZjlmOWRjMzNlIiwiaCI6Im11cm11cjY0In0=";
-  const FUEL_PRICE_API_URL = "https://script.google.com/macros/s/AKfycbx8iQBM62Rx-RxlFJBNA8N8NLSHH9jpplilDdiQuGDQQYyzGgYokHmKosb3PmC9hq60/exec";
+  const FUEL_PRICE_API_URL = "https://script.google.com/macros/s/AKfycbxGpBDVQxAhXRRVQ5jeRyqo2o23XB0X6nc5tkj_8m1pUSGzvjW8Z0ViAQW3alaC240P/exec";
 
   const VEHICLES = {
     motorcycle: 35,
@@ -27,36 +27,31 @@ document.addEventListener("DOMContentLoaded", function () {
     unleaded: {
       display_name: "Unleaded / Regular 91",
       price_php_per_liter: 87.69,
-      station_count: 0,
       last_update: "Fallback"
     },
     premium: {
       display_name: "Premium Gasoline 95",
       price_php_per_liter: 90.00,
-      station_count: 0,
       last_update: "Fallback"
     },
     diesel: {
       display_name: "Diesel",
       price_php_per_liter: 92.20,
-      station_count: 0,
       last_update: "Fallback"
     },
     premium_diesel: {
       display_name: "Premium Diesel",
       price_php_per_liter: 94.00,
-      station_count: 0,
       last_update: "Fallback"
     },
     kerosene: {
       display_name: "Kerosene",
       price_php_per_liter: 80.00,
-      station_count: 0,
       last_update: "Fallback"
     }
   };
 
-  let fuelPrices = { ...FALLBACK_FUEL_PRICES };
+  let fuelPrices = {};
 
   const tripForm = document.getElementById("tripForm");
   const vehicleTypeEl = document.getElementById("vehicleType");
@@ -80,7 +75,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const boardKerosene = document.getElementById("boardKerosene");
   const boardUpdatedAt = document.getElementById("boardUpdatedAt");
 
-  updateFuelBoard();
+  showLoadingFuelBoard();
   loadFuelPricesFromSheet();
 
   vehicleTypeEl.addEventListener("change", function () {
@@ -120,7 +115,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       let distanceKm;
 
-      if (OPENROUTE_API_KEY.trim()) {
+      if (OPENROUTE_API_KEY.trim() && !OPENROUTE_API_KEY.includes("PASTE_")) {
         const originCoords = await geocodePlace(origin);
         const destinationCoords = await geocodePlace(destination);
         distanceKm = await getDrivingDistanceKm(originCoords, destinationCoords);
@@ -148,7 +143,11 @@ document.addEventListener("DOMContentLoaded", function () {
         <li>Base fuel needed: ${baseLiters.toFixed(2)} L</li>
         <li>Extra allowance added: ${allowanceLiters.toFixed(2)} L</li>
         <li>Fuel price used: ${formatPeso(fuelPrice)} / L</li>
-        ${OPENROUTE_API_KEY.trim() ? "" : "<li>Distance is using temporary 10 km because OpenRouteService key is blank.</li>"}
+        ${
+          OPENROUTE_API_KEY.trim() && !OPENROUTE_API_KEY.includes("PASTE_")
+            ? ""
+            : "<li>Distance is using temporary 10 km because OpenRouteService key is blank.</li>"
+        }
       `;
     } catch (error) {
       showError(
@@ -162,16 +161,17 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   async function loadFuelPricesFromSheet() {
-    if (!FUEL_PRICE_API_URL.trim()) {
-      updateFuelBoard("Using fallback prices. Add your Google Apps Script URL in script.js.");
+    if (!FUEL_PRICE_API_URL.trim() || FUEL_PRICE_API_URL.includes("PASTE_")) {
+      fuelPrices = { ...FALLBACK_FUEL_PRICES };
+      updateFuelBoard();
       return;
     }
 
     try {
-      const response = await fetch(FUEL_PRICE_API_URL);
+      const response = await fetchWithTimeout(FUEL_PRICE_API_URL, 30000);
       const data = await response.json();
 
-      if (!data.success) {
+      if (!data.success || !data.prices) {
         throw new Error(data.message || "Fuel price database returned an error.");
       }
 
@@ -180,13 +180,44 @@ document.addEventListener("DOMContentLoaded", function () {
         ...data.prices
       };
 
-      updateFuelBoard("Average prices loaded from Google Sheets.");
+      updateFuelBoard();
       applySelectedFuelPrice();
     } catch (error) {
       console.error("Fuel price database error:", error);
+
       fuelPrices = { ...FALLBACK_FUEL_PRICES };
-      updateFuelBoard("Could not load Google Sheets prices. Using fallback prices.");
+      updateFuelBoard();
     }
+  }
+
+  async function fetchWithTimeout(url, timeoutMs = 30000) {
+    const controller = new AbortController();
+
+    const timeout = setTimeout(function () {
+      controller.abort();
+    }, timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        signal: controller.signal,
+        cache: "no-store"
+      });
+
+      clearTimeout(timeout);
+      return response;
+    } catch (error) {
+      clearTimeout(timeout);
+      throw error;
+    }
+  }
+
+  function showLoadingFuelBoard() {
+    boardUnleaded.textContent = "Loading...";
+    boardPremium.textContent = "Loading...";
+    boardDiesel.textContent = "Loading...";
+    boardPremiumDiesel.textContent = "Loading...";
+    boardKerosene.textContent = "Loading...";
+    boardUpdatedAt.textContent = "Loading fuel prices...";
   }
 
   function applySelectedFuelPrice() {
