@@ -87,14 +87,44 @@
 
       <div class="field full">
         <label for="origin">Starting Point</label>
-        <input id="origin" required placeholder="Naga City, Camarines Sur">
-        <small>Example: Naga City, Camarines Sur</small>
+
+        <div class="autocomplete-wrapper">
+          <input
+            id="origin"
+            type="text"
+            autocomplete="off"
+            required
+            placeholder="Naga City, Camarines Sur"
+          >
+
+          <div id="originSuggestions" class="suggestions"></div>
+        </div>
+
+        <input type="hidden" id="originLat">
+        <input type="hidden" id="originLng">
+
+        <small>Select a location from the suggestions.</small>
       </div>
 
       <div class="field full">
         <label for="destination">Destination</label>
-        <input id="destination" required placeholder="Quezon City, Metro Manila">
-        <small>Example: Quezon City, Metro Manila</small>
+
+        <div class="autocomplete-wrapper">
+          <input
+            id="destination"
+            type="text"
+            autocomplete="off"
+            required
+            placeholder="Quezon City, Metro Manila"
+          >
+
+          <div id="destinationSuggestions" class="suggestions"></div>
+        </div>
+
+        <input type="hidden" id="destinationLat">
+        <input type="hidden" id="destinationLng">
+
+        <small>Select a location from the suggestions.</small>
       </div>
 
       <div class="field">

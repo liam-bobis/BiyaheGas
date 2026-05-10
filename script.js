@@ -354,3 +354,77 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 });
+
+setupAutocomplete("origin", "originSuggestions");
+setupAutocomplete("destination", "destinationSuggestions");
+
+function setupAutocomplete(inputId, suggestionsId) {
+  const input = document.getElementById(inputId);
+  const suggestionsBox = document.getElementById(suggestionsId);
+
+  let debounce;
+
+  input.addEventListener("input", function () {
+    clearTimeout(debounce);
+
+    const query = input.value.trim();
+
+    if (query.length < 3) {
+      suggestionsBox.style.display = "none";
+      return;
+    }
+
+    debounce = setTimeout(async () => {
+      try {
+        const url =
+          `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        suggestionsBox.innerHTML = "";
+
+        if (!data.features || data.features.length === 0) {
+          suggestionsBox.style.display = "none";
+          return;
+        }
+
+        data.features.forEach(feature => {
+          const props = feature.properties;
+
+          const nameParts = [
+            props.name,
+            props.city,
+            props.state,
+            props.country
+          ].filter(Boolean);
+
+          const label = nameParts.join(", ");
+
+          const item = document.createElement("div");
+          item.className = "suggestion-item";
+          item.textContent = label;
+
+          item.addEventListener("click", function () {
+            input.value = label;
+            suggestionsBox.style.display = "none";
+          });
+
+          suggestionsBox.appendChild(item);
+        });
+
+        suggestionsBox.style.display = "block";
+
+      } catch (error) {
+        console.error("Autocomplete error:", error);
+      }
+    }, 300);
+  });
+
+  document.addEventListener("click", function (event) {
+    if (!input.contains(event.target) &&
+        !suggestionsBox.contains(event.target)) {
+      suggestionsBox.style.display = "none";
+    }
+  });
+}

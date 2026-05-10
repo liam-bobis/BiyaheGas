@@ -431,3 +431,38 @@ button:hover {
     white-space: normal;
   }
 }
+
+.autocomplete-wrapper {
+  position: relative;
+}
+
+.suggestions {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #dbe4ee;
+  border-radius: 14px;
+  overflow: hidden;
+  z-index: 20;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.08);
+  display: none;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.suggestion-item {
+  padding: 12px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid #eef2f7;
+  font-size: 0.94rem;
+}
+
+.suggestion-item:hover {
+  background: #f3f8ff;
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
