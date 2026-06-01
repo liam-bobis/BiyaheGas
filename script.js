@@ -1,6 +1,10 @@
 document.addEventListener("DOMContentLoaded", function () {
   const OPENROUTE_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjNhMDYwMTM2OWY1YTQ3YWI5MTBhOGI3ZjlmOWRjMzNlIiwiaCI6Im11cm11cjY0In0=";
-  const FUEL_PRICE_API_URL = "https://script.google.com/macros/s/AKfycbxGpBDVQxAhXRRVQ5jeRyqo2o23XB0X6nc5tkj_8m1pUSGzvjW8Z0ViAQW3alaC240P/exec";
+  const FUEL_PRICE_API_URL = "https://script.google.com/macros/s/AKfycbztxc2jyBLUPeK79K9t-2eTqYmss3sIk9GC82Wh7KP41-8Grzr6Dk-ktr0mveFwlaKMWg/exec";
+
+  /* =========================
+     VEHICLE KM/L AVERAGES
+  ========================= */
 
   const VEHICLES = {
     motorcycle: 35,
@@ -23,408 +27,702 @@ document.addEventListener("DOMContentLoaded", function () {
     heavytruck: 3
   };
 
+  /* =========================
+     FALLBACK FUEL PRICES
+  ========================= */
+
   const FALLBACK_FUEL_PRICES = {
     unleaded: {
-      display_name: "Unleaded / Regular 91",
-      price_php_per_liter: 87.69,
+      display_name: "Unleaded 91",
+      avg_price: 88.50,
       last_update: "Fallback"
     },
+
     premium: {
-      display_name: "Premium Gasoline 95",
-      price_php_per_liter: 90.00,
+      display_name: "Premium 95",
+      avg_price: 91.50,
       last_update: "Fallback"
     },
+
     diesel: {
       display_name: "Diesel",
-      price_php_per_liter: 92.20,
+      avg_price: 92.50,
       last_update: "Fallback"
     },
+
     premium_diesel: {
       display_name: "Premium Diesel",
-      price_php_per_liter: 94.00,
+      avg_price: 95.50,
       last_update: "Fallback"
     },
+
     kerosene: {
       display_name: "Kerosene",
-      price_php_per_liter: 80.00,
+      avg_price: 82.00,
       last_update: "Fallback"
     }
   };
 
-  let fuelPrices = {};
+  let fuelPrices = {
+    ...FALLBACK_FUEL_PRICES
+  };
 
-  const tripForm = document.getElementById("tripForm");
-  const vehicleTypeEl = document.getElementById("vehicleType");
-  const fuelTypeEl = document.getElementById("fuelType");
-  const kmPerLiterEl = document.getElementById("kmPerLiter");
-  const allowanceLitersEl = document.getElementById("allowanceLiters");
-  const fuelPriceEl = document.getElementById("fuelPrice");
-  const resetAutoPriceBtn = document.getElementById("resetAutoPriceBtn");
+  /* =========================
+     DOM ELEMENTS
+  ========================= */
 
-  const costValue = document.getElementById("costValue");
-  const litersValue = document.getElementById("litersValue");
-  const distanceValue = document.getElementById("distanceValue");
-  const priceValue = document.getElementById("priceValue");
-  const detailsList = document.getElementById("detailsList");
-  const errorBox = document.getElementById("errorBox");
+  const tripForm =
+    document.getElementById("tripForm");
 
-  const boardUnleaded = document.getElementById("boardUnleaded");
-  const boardPremium = document.getElementById("boardPremium");
-  const boardDiesel = document.getElementById("boardDiesel");
-  const boardPremiumDiesel = document.getElementById("boardPremiumDiesel");
-  const boardKerosene = document.getElementById("boardKerosene");
-  const boardUpdatedAt = document.getElementById("boardUpdatedAt");
+  const vehicleTypeEl =
+    document.getElementById("vehicleType");
+
+  const fuelTypeEl =
+    document.getElementById("fuelType");
+
+  const kmPerLiterEl =
+    document.getElementById("kmPerLiter");
+
+  const allowanceLitersEl =
+    document.getElementById("allowanceLiters");
+
+  const fuelPriceEl =
+    document.getElementById("fuelPrice");
+
+  const tripTypeEl =
+    document.getElementById("tripType");
+
+  const resetAutoPriceBtn =
+    document.getElementById("resetAutoPriceBtn");
+
+  const originEl =
+    document.getElementById("origin");
+
+  const destinationEl =
+    document.getElementById("destination");
+
+  const costValue =
+    document.getElementById("costValue");
+
+  const litersValue =
+    document.getElementById("litersValue");
+
+  const distanceValue =
+    document.getElementById("distanceValue");
+
+  const priceValue =
+    document.getElementById("priceValue");
+
+  const detailsList =
+    document.getElementById("detailsList");
+
+  const errorBox =
+    document.getElementById("errorBox");
+
+  /* =========================
+     FUEL BOARD
+  ========================= */
+
+  const boardUnleaded =
+    document.getElementById("boardUnleaded");
+
+  const boardPremium =
+    document.getElementById("boardPremium");
+
+  const boardDiesel =
+    document.getElementById("boardDiesel");
+
+  const boardPremiumDiesel =
+    document.getElementById("boardPremiumDiesel");
+
+  const boardKerosene =
+    document.getElementById("boardKerosene");
+
+  const boardUpdatedAt =
+    document.getElementById("boardUpdatedAt");
+
+  /* =========================
+     INITIALIZE
+  ========================= */
 
   showLoadingFuelBoard();
   loadFuelPricesFromSheet();
 
-  vehicleTypeEl.addEventListener("change", function () {
-    kmPerLiterEl.value = VEHICLES[vehicleTypeEl.value] || "";
-  });
+  /* =========================
+     EVENT LISTENERS
+  ========================= */
 
-  fuelTypeEl.addEventListener("change", function () {
-    applySelectedFuelPrice();
-  });
-
-  resetAutoPriceBtn.addEventListener("click", function () {
-    applySelectedFuelPrice();
-  });
-
-  tripForm.addEventListener("submit", async function (event) {
-    event.preventDefault();
-    hideError();
-
-    try {
-      const origin = document.getElementById("origin").value.trim();
-      const destination = document.getElementById("destination").value.trim();
-      const vehicleType = vehicleTypeEl.value;
-      const fuelType = fuelTypeEl.value;
-      const kmPerLiter = parseFloat(kmPerLiterEl.value);
-      const allowanceLiters = parseFloat(allowanceLitersEl.value);
-      const fuelPrice = parseFloat(fuelPriceEl.value);
-
-      if (!origin) throw new Error("Please enter your starting point.");
-      if (!destination) throw new Error("Please enter your destination.");
-      if (!vehicleType) throw new Error("Please select a vehicle type.");
-      if (!fuelType) throw new Error("Please select a fuel type.");
-      if (!kmPerLiter || kmPerLiter <= 0) throw new Error("Please enter a valid km/L.");
-      if (isNaN(allowanceLiters) || allowanceLiters < 0) throw new Error("Please enter a valid allowance.");
-      if (isNaN(fuelPrice) || fuelPrice <= 0) throw new Error("Please enter a valid fuel price.");
-
-      setLoadingResults();
-
-      let distanceKm;
-
-      if (OPENROUTE_API_KEY.trim() && !OPENROUTE_API_KEY.includes("PASTE_")) {
-        const originCoords = await geocodePlace(origin);
-        const destinationCoords = await geocodePlace(destination);
-        distanceKm = await getDrivingDistanceKm(originCoords, destinationCoords);
-      } else {
-        distanceKm = 10;
-      }
-
-      const tripType = document.getElementById("tripType").value;
-
-      if (tripType === "roundtrip") {
-        distanceKm = distanceKm * 2;
-      }
-
-      const baseLiters = distanceKm / kmPerLiter;
-      const totalLiters = baseLiters + allowanceLiters;
-      const totalCost = totalLiters * fuelPrice;
-
-      costValue.textContent = formatPeso(totalCost);
-      litersValue.textContent = totalLiters.toFixed(2) + " L";
-      distanceValue.textContent = distanceKm.toFixed(2) + " km";
-      priceValue.textContent = formatPeso(fuelPrice) + " / L";
-
-      const fuelName = fuelPrices[fuelType]?.display_name || fuelType;
-      const vehicleName = vehicleTypeEl.options[vehicleTypeEl.selectedIndex].text;
-
-      detailsList.innerHTML = `
-        <li>Route: ${escapeHTML(origin)} to ${escapeHTML(destination)}</li>
-        <li>Trip type: ${tripType === "roundtrip" ? "Round Trip" : "One Way"}</li>
-        <li>Vehicle type: ${escapeHTML(vehicleName)}</li>
-        <li>Fuel type: ${escapeHTML(fuelName)}</li>
-        <li>Fuel efficiency used: ${kmPerLiter.toFixed(1)} km/L</li>
-        <li>Base fuel needed: ${baseLiters.toFixed(2)} L</li>
-        <li>Extra allowance added: ${allowanceLiters.toFixed(2)} L</li>
-        <li>Fuel price used: ${formatPeso(fuelPrice)} / L</li>
-        ${
-          OPENROUTE_API_KEY.trim() && !OPENROUTE_API_KEY.includes("PASTE_")
-            ? ""
-            : "<li>Distance is using temporary 10 km because OpenRouteService key is blank.</li>"
-        }
-      `;
-    } catch (error) {
-      showError(
-        error.message === "Failed to fetch"
-          ? "Could not connect to the distance API or fuel price database. Use Live Server and check your API URLs."
-          : error.message
-      );
-
-      resetResults();
+  vehicleTypeEl.addEventListener(
+    "change",
+    function () {
+      kmPerLiterEl.value =
+        VEHICLES[vehicleTypeEl.value] || "";
     }
-  });
+  );
+
+  fuelTypeEl.addEventListener(
+    "change",
+    applySelectedFuelPrice
+  );
+
+  resetAutoPriceBtn.addEventListener(
+    "click",
+    applySelectedFuelPrice
+  );
+
+  tripForm.addEventListener(
+    "submit",
+    async function (event) {
+
+      event.preventDefault();
+
+      hideError();
+
+      try {
+
+        const origin =
+          originEl.value.trim();
+
+        const destination =
+          destinationEl.value.trim();
+
+        const vehicleType =
+          vehicleTypeEl.value;
+
+        const fuelType =
+          fuelTypeEl.value;
+
+        const kmPerLiter =
+          parseFloat(
+            kmPerLiterEl.value
+          );
+
+        const allowanceLiters =
+          parseFloat(
+            allowanceLitersEl.value
+          );
+
+        const fuelPrice =
+          parseFloat(
+            fuelPriceEl.value
+          );
+
+        if (!origin)
+          throw new Error(
+            "Enter starting point."
+          );
+
+        if (!destination)
+          throw new Error(
+            "Enter destination."
+          );
+
+        if (!vehicleType)
+          throw new Error(
+            "Select vehicle type."
+          );
+
+        if (!fuelType)
+          throw new Error(
+            "Select fuel type."
+          );
+
+        if (
+          !kmPerLiter ||
+          kmPerLiter <= 0
+        ) {
+          throw new Error(
+            "Enter valid km/L."
+          );
+        }
+
+        if (
+          isNaN(allowanceLiters)
+        ) {
+          throw new Error(
+            "Invalid allowance."
+          );
+        }
+
+        if (
+          isNaN(fuelPrice) ||
+          fuelPrice <= 0
+        ) {
+          throw new Error(
+            "Enter valid fuel price."
+          );
+        }
+
+        setLoadingResults();
+
+        let distanceKm;
+
+        const originCoords =
+          await geocodePlace(origin);
+
+        const destinationCoords =
+          await geocodePlace(destination);
+
+        distanceKm =
+          await getDrivingDistanceKm(
+            originCoords,
+            destinationCoords
+          );
+
+        if (
+          tripTypeEl.value ===
+          "roundtrip"
+        ) {
+          distanceKm *= 2;
+        }
+
+        const baseLiters =
+          distanceKm /
+          kmPerLiter;
+
+        const totalLiters =
+          baseLiters +
+          allowanceLiters;
+
+        const totalCost =
+          totalLiters *
+          fuelPrice;
+
+        costValue.textContent =
+          formatPeso(totalCost);
+
+        litersValue.textContent =
+          totalLiters.toFixed(2) +
+          " L";
+
+        distanceValue.textContent =
+          distanceKm.toFixed(2) +
+          " km";
+
+        priceValue.textContent =
+          formatPeso(fuelPrice) +
+          " / L";
+
+        detailsList.innerHTML = `
+          <li>Route: ${origin} to ${destination}</li>
+          <li>Trip type: ${
+            tripTypeEl.value ===
+            "roundtrip"
+              ? "Roundtrip"
+              : "One-way"
+          }</li>
+          <li>Fuel efficiency used:
+            ${kmPerLiter.toFixed(1)} km/L
+          </li>
+          <li>Estimated liters:
+            ${totalLiters.toFixed(2)} L
+          </li>
+        `;
+
+      } catch (error) {
+
+        showError(
+          error.message
+        );
+
+        resetResults();
+
+      }
+
+    }
+  );
+
+  /* =========================
+     LOAD FUEL PRICES
+  ========================= */
 
   async function loadFuelPricesFromSheet() {
-    if (!FUEL_PRICE_API_URL.trim() || FUEL_PRICE_API_URL.includes("PASTE_")) {
-      fuelPrices = { ...FALLBACK_FUEL_PRICES };
+
+    if (
+      !FUEL_PRICE_API_URL.trim()
+    ) {
       updateFuelBoard();
       return;
     }
 
     try {
-      const response = await fetchWithTimeout(FUEL_PRICE_API_URL, 30000);
-      const data = await response.json();
 
-      if (!data.success || !data.prices) {
-        throw new Error(data.message || "Fuel price database returned an error.");
+      const response =
+        await fetch(
+          FUEL_PRICE_API_URL +
+          "?t=" +
+          Date.now()
+        );
+
+      const data =
+        await response.json();
+
+      if (
+        !data.success ||
+        !data.prices
+      ) {
+        throw new Error();
       }
 
       fuelPrices = {
-        ...FALLBACK_FUEL_PRICES,
+        ...fuelPrices,
         ...data.prices
       };
 
       updateFuelBoard();
+
       applySelectedFuelPrice();
-    } catch (error) {
-      console.error("Fuel price database error:", error);
 
-      fuelPrices = { ...FALLBACK_FUEL_PRICES };
+    } catch (error) {
+
+      console.error(error);
+
       updateFuelBoard();
+
     }
-  }
 
-  async function fetchWithTimeout(url, timeoutMs = 30000) {
-    const controller = new AbortController();
-
-    const timeout = setTimeout(function () {
-      controller.abort();
-    }, timeoutMs);
-
-    try {
-      const response = await fetch(url, {
-        signal: controller.signal,
-        cache: "no-store"
-      });
-
-      clearTimeout(timeout);
-      return response;
-    } catch (error) {
-      clearTimeout(timeout);
-      throw error;
-    }
-  }
-
-  function showLoadingFuelBoard() {
-    boardUnleaded.textContent = "Loading...";
-    boardPremium.textContent = "Loading...";
-    boardDiesel.textContent = "Loading...";
-    boardPremiumDiesel.textContent = "Loading...";
-    boardKerosene.textContent = "Loading...";
-    boardUpdatedAt.textContent = "Loading fuel prices...";
   }
 
   function applySelectedFuelPrice() {
-    const selectedFuel = fuelTypeEl.value;
 
-    if (!selectedFuel || !fuelPrices[selectedFuel]) {
-      fuelPriceEl.value = "";
+    const selectedFuel =
+      fuelTypeEl.value;
+
+    if (!selectedFuel)
+      return;
+
+    const fuelData =
+      fuelPrices[selectedFuel];
+
+    if (!fuelData)
+      return;
+
+    const avgPrice =
+      Number(
+        fuelData.avg_price
+      );
+
+    if (
+      isNaN(avgPrice)
+    ) {
       return;
     }
 
-    fuelPriceEl.value = Number(fuelPrices[selectedFuel].price_php_per_liter).toFixed(2);
+    fuelPriceEl.value =
+      avgPrice.toFixed(2);
+
   }
 
-  function updateFuelBoard(customNote) {
-    boardUnleaded.textContent = getBoardText("unleaded");
-    boardPremium.textContent = getBoardText("premium");
-    boardDiesel.textContent = getBoardText("diesel");
-    boardPremiumDiesel.textContent = getBoardText("premium_diesel");
-    boardKerosene.textContent = getBoardText("kerosene");
+  function updateFuelBoard() {
 
-    const latestUpdate =
-      fuelPrices.unleaded?.last_update ||
-      fuelPrices.premium?.last_update ||
-      fuelPrices.diesel?.last_update ||
-      "Unknown";
+    boardUnleaded.textContent =
+      getFuelBoardText(
+        "unleaded"
+      );
+
+    boardPremium.textContent =
+      getFuelBoardText(
+        "premium"
+      );
+
+    boardDiesel.textContent =
+      getFuelBoardText(
+        "diesel"
+      );
+
+    boardPremiumDiesel.textContent =
+      getFuelBoardText(
+        "premium_diesel"
+      );
+
+    boardKerosene.textContent =
+      getFuelBoardText(
+        "kerosene"
+      );
 
     boardUpdatedAt.textContent =
-      customNote || `Last update: ${latestUpdate}. Actual prices may vary by station.`;
+      "Average fuel prices.";
+
   }
 
-  function getBoardText(fuelType) {
-    if (!fuelPrices[fuelType]) return "Unavailable";
+  function getFuelBoardText(
+    fuelKey
+  ) {
 
-    const price = Number(fuelPrices[fuelType].price_php_per_liter);
-    if (isNaN(price) || price <= 0) return "Unavailable";
+    const fuel =
+      fuelPrices[fuelKey];
 
-    return formatPeso(price) + " / L";
+    if (!fuel)
+      return "Unavailable";
+
+    const avg =
+      Number(
+        fuel.avg_price
+      );
+
+    if (isNaN(avg))
+      return "Unavailable";
+
+    return `₱${avg.toFixed(2)}`;
+
   }
 
-  async function geocodePlace(place) {
-    const query = place + ", Philippines";
+  /* =========================
+     PHOTON AUTOCOMPLETE
+  ========================= */
 
-    const url = new URL("https://api.openrouteservice.org/geocode/search");
-    url.searchParams.set("api_key", OPENROUTE_API_KEY);
-    url.searchParams.set("text", query);
-    url.searchParams.set("size", "1");
-    url.searchParams.set("boundary.country", "PH");
+  setupAutocomplete(
+    "origin",
+    "originSuggestions"
+  );
 
-    const response = await fetch(url.toString());
+  setupAutocomplete(
+    "destination",
+    "destinationSuggestions"
+  );
 
-    if (!response.ok) {
-      throw new Error("Location lookup failed. Check your OpenRouteService API key.");
-    }
+  function setupAutocomplete(
+    inputId,
+    suggestionsId
+  ) {
 
-    const data = await response.json();
+    const input =
+      document.getElementById(
+        inputId
+      );
 
-    if (!data.features || data.features.length === 0) {
-      throw new Error("Location not found. Please use a more specific location.");
-    }
+    const suggestionsBox =
+      document.getElementById(
+        suggestionsId
+      );
 
-    return data.features[0].geometry.coordinates;
-  }
+    let debounce;
 
-  async function getDrivingDistanceKm(startCoords, endCoords) {
-    const response = await fetch("https://api.openrouteservice.org/v2/directions/driving-car/geojson", {
-      method: "POST",
-      headers: {
-        "Authorization": OPENROUTE_API_KEY,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        coordinates: [startCoords, endCoords]
-      })
-    });
+    input.addEventListener(
+      "input",
+      function () {
 
-    if (!response.ok) {
-      throw new Error("Route distance failed. Check your API key or use clearer locations.");
-    }
+        clearTimeout(
+          debounce
+        );
 
-    const data = await response.json();
-    const meters = data.features[0].properties.summary.distance;
+        const query =
+          input.value.trim();
 
-    return meters / 1000;
-  }
-
-  function setLoadingResults() {
-    costValue.textContent = "Calculating...";
-    litersValue.textContent = "Calculating...";
-    distanceValue.textContent = "Calculating...";
-    priceValue.textContent = "Calculating...";
-  }
-
-  function resetResults() {
-    costValue.textContent = "—";
-    litersValue.textContent = "—";
-    distanceValue.textContent = "—";
-    priceValue.textContent = "—";
-  }
-
-  function formatPeso(value) {
-    return new Intl.NumberFormat("en-PH", {
-      style: "currency",
-      currency: "PHP",
-      maximumFractionDigits: 2
-    }).format(value);
-  }
-
-  function showError(message) {
-    errorBox.textContent = message;
-    errorBox.classList.remove("hidden");
-  }
-
-  function hideError() {
-    errorBox.textContent = "";
-    errorBox.classList.add("hidden");
-  }
-
-  function escapeHTML(value) {
-    return String(value).replace(/[&<>"']/g, function (char) {
-      return {
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#039;"
-      }[char];
-    });
-  }
-});
-
-setupAutocomplete("origin", "originSuggestions");
-setupAutocomplete("destination", "destinationSuggestions");
-
-function setupAutocomplete(inputId, suggestionsId) {
-  const input = document.getElementById(inputId);
-  const suggestionsBox = document.getElementById(suggestionsId);
-
-  let debounce;
-
-  input.addEventListener("input", function () {
-    clearTimeout(debounce);
-
-    const query = input.value.trim();
-
-    if (query.length < 3) {
-      suggestionsBox.style.display = "none";
-      return;
-    }
-
-    debounce = setTimeout(async () => {
-      try {
-        const url =
-          `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`;
-
-        const response = await fetch(url);
-        const data = await response.json();
-
-        suggestionsBox.innerHTML = "";
-
-        if (!data.features || data.features.length === 0) {
-          suggestionsBox.style.display = "none";
+        if (
+          query.length < 3
+        ) {
+          suggestionsBox.style.display =
+            "none";
           return;
         }
 
-        data.features.forEach(feature => {
-          const props = feature.properties;
+        debounce =
+          setTimeout(
+            async function () {
 
-          const nameParts = [
-            props.name,
-            props.city,
-            props.state,
-            props.country
-          ].filter(Boolean);
+              try {
 
-          const label = nameParts.join(", ");
+                const response =
+                  await fetch(
+                    `https://photon.komoot.io/api/?q=${encodeURIComponent(query + " Philippines")}&limit=5`
+                  );
 
-          const item = document.createElement("div");
-          item.className = "suggestion-item";
-          item.textContent = label;
+                const data =
+                  await response.json();
 
-          item.addEventListener("click", function () {
-            input.value = label;
-            suggestionsBox.style.display = "none";
-          });
+                suggestionsBox.innerHTML =
+                  "";
 
-          suggestionsBox.appendChild(item);
-        });
+                data.features.forEach(
+                  function (
+                    feature
+                  ) {
 
-        suggestionsBox.style.display = "block";
+                    const props =
+                      feature.properties;
 
-      } catch (error) {
-        console.error("Autocomplete error:", error);
+                    const label =
+                      [
+                        props.name,
+                        props.city,
+                        props.state
+                      ]
+                        .filter(
+                          Boolean
+                        )
+                        .join(
+                          ", "
+                        );
+
+                    const item =
+                      document.createElement(
+                        "div"
+                      );
+
+                    item.className =
+                      "suggestion-item";
+
+                    item.textContent =
+                      label;
+
+                    item.onclick =
+                      function () {
+                        input.value =
+                          label;
+
+                        suggestionsBox.style.display =
+                          "none";
+                      };
+
+                    suggestionsBox.appendChild(
+                      item
+                    );
+
+                  }
+                );
+
+                suggestionsBox.style.display =
+                  "block";
+
+              } catch (
+                error
+              ) {
+                console.error(
+                  error
+                );
+              }
+
+            },
+            300
+          );
+
       }
-    }, 300);
-  });
+    );
 
-  document.addEventListener("click", function (event) {
-    if (!input.contains(event.target) &&
-        !suggestionsBox.contains(event.target)) {
-      suggestionsBox.style.display = "none";
+  }
+
+  async function geocodePlace(
+    place
+  ) {
+
+    const response =
+      await fetch(
+        `https://api.openrouteservice.org/geocode/search?api_key=${OPENROUTE_API_KEY}&text=${encodeURIComponent(place)}`
+      );
+
+    const data =
+      await response.json();
+
+    if (
+      !data.features ||
+      !data.features.length
+    ) {
+      throw new Error(
+        "Location not found."
+      );
     }
-  });
-}
+
+    return data.features[0]
+      .geometry
+      .coordinates;
+  }
+
+  async function getDrivingDistanceKm(
+    startCoords,
+    endCoords
+  ) {
+
+    const response =
+      await fetch(
+        "https://api.openrouteservice.org/v2/directions/driving-car/geojson",
+        {
+          method: "POST",
+          headers: {
+            Authorization:
+              OPENROUTE_API_KEY,
+            "Content-Type":
+              "application/json"
+          },
+          body: JSON.stringify({
+            coordinates: [
+              startCoords,
+              endCoords
+            ]
+          })
+        }
+      );
+
+    const data =
+      await response.json();
+
+    return (
+      data.features[0]
+        .properties
+        .summary
+        .distance / 1000
+    );
+  }
+
+  function showLoadingFuelBoard() {
+    boardUnleaded.textContent =
+      "Loading...";
+    boardPremium.textContent =
+      "Loading...";
+    boardDiesel.textContent =
+      "Loading...";
+    boardPremiumDiesel.textContent =
+      "Loading...";
+    boardKerosene.textContent =
+      "Loading...";
+  }
+
+  function setLoadingResults() {
+    costValue.textContent =
+      "Calculating...";
+    litersValue.textContent =
+      "Calculating...";
+    distanceValue.textContent =
+      "Calculating...";
+    priceValue.textContent =
+      "Calculating...";
+  }
+
+  function resetResults() {
+    costValue.textContent =
+      "—";
+    litersValue.textContent =
+      "—";
+    distanceValue.textContent =
+      "—";
+    priceValue.textContent =
+      "—";
+  }
+
+  function formatPeso(value) {
+    return new Intl.NumberFormat(
+      "en-PH",
+      {
+        style: "currency",
+        currency: "PHP"
+      }
+    ).format(value);
+  }
+
+  function showError(message) {
+    errorBox.textContent =
+      message;
+    errorBox.classList.remove(
+      "hidden"
+    );
+  }
+
+  function hideError() {
+    errorBox.textContent =
+      "";
+    errorBox.classList.add(
+      "hidden"
+    );
+  }
+
+});
