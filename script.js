@@ -341,7 +341,12 @@ document.addEventListener("DOMContentLoaded", function () {
     if (
       !FUEL_PRICE_API_URL.trim()
     ) {
+      fuelPrices = {
+        ...FALLBACK_FUEL_PRICES
+      };
+
       updateFuelBoard();
+      applySelectedFuelPrice();
       return;
     }
 
@@ -357,17 +362,22 @@ document.addEventListener("DOMContentLoaded", function () {
       const data =
         await response.json();
 
+      console.log(
+        "Fuel API Response:",
+        data
+      );
+
       if (
         !data.success ||
         !data.prices
       ) {
-        throw new Error();
+        throw new Error(
+          "Invalid fuel data"
+        );
       }
 
-      fuelPrices = {
-        ...fuelPrices,
-        ...data.prices
-      };
+      fuelPrices =
+        data.prices;
 
       updateFuelBoard();
 
@@ -375,41 +385,59 @@ document.addEventListener("DOMContentLoaded", function () {
 
     } catch (error) {
 
-      console.error(error);
+      console.error(
+        "Fuel price load error:",
+        error
+      );
+
+      fuelPrices = {
+        ...FALLBACK_FUEL_PRICES
+      };
 
       updateFuelBoard();
 
+      applySelectedFuelPrice();
     }
-
   }
 
   function applySelectedFuelPrice() {
 
-    const selectedFuel =
-      fuelTypeEl.value;
+  const selectedFuel =
+    fuelTypeEl.value;
 
-    if (!selectedFuel)
-      return;
+  if (!selectedFuel) {
+    return;
+  }
 
-    const fuelData =
-      fuelPrices[selectedFuel];
+  const fuelData =
+    fuelPrices[selectedFuel];
 
-    if (!fuelData)
-      return;
+  if (!fuelData) {
+    console.log(
+      "Fuel not found:",
+      selectedFuel
+    );
+    return;
+  }
 
-    const avgPrice =
-      Number(
-        fuelData.avg_price
-      );
+  const avgPrice =
+    Number(
+      fuelData.avg_price
+    );
 
-    if (
-      isNaN(avgPrice)
-    ) {
-      return;
-    }
+  if (
+    isNaN(avgPrice) ||
+    avgPrice <= 0
+  ) {
+    console.log(
+      "Invalid avg price:",
+      fuelData
+    );
+    return;
+  }
 
-    fuelPriceEl.value =
-      avgPrice.toFixed(2);
+  fuelPriceEl.value =
+    avgPrice.toFixed(2);
 
   }
 
